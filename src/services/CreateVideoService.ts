@@ -1,6 +1,7 @@
 
 import { Category } from "../entities/Category";
 import { Video } from "../entities/Video";
+import { ICategoryRepository, IVideoRepository } from "../repositories/video-repository.interface";
 import { AppDataSource } from "../server";
 
 type VideoResquest = {
@@ -12,24 +13,20 @@ type VideoResquest = {
 
 export class CreateVideoService {
 
-   async execute({ name, description, duration, category_id}: VideoResquest ): Promise<Error | Video> {
-    
-    const repo = AppDataSource.getRepository(Video)
-    const repoCategory = AppDataSource.getRepository(Category)
-
-    if(await repo.findOneBy({ name })) {
-        return new Error("Video already exists");
+    constructor(
+        private readonly videoRepo: IVideoRepository,
+        private readonly categoryRepo: ICategoryRepository) {
     }
 
-    const video = repo.create({
-        name,
-        description,
-        duration,
-        category_id
-    });
+    async execute({ name, description, duration, category_id }: VideoResquest): Promise<Error | Video> {
 
-    await repo.save(video);
+        const categoryExists = await this.categoryRepo.findById(category_id);
+        if (!categoryExists) {
+            return new Error("Video already exists");
+        }
 
-    return video;
-   }
+        const videoCreated = await this.videoRepo.create({ name, description, duration, category_id } as Video)
+
+        return videoCreated;
+    }
 }
